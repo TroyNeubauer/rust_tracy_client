@@ -68,7 +68,7 @@ fn set_feature_defines(mut c: cc::Build) -> cc::Build {
     c
 }
 
-fn build_tracy_client() {
+fn build_tracy_client() { 
     if std::env::var_os("CARGO_FEATURE_ENABLE").is_some() {
         let mut builder = set_feature_defines(cc::Build::new());
         let _ = builder
@@ -81,6 +81,35 @@ fn build_tracy_client() {
                 builder.flag("-std=c++11");
             }
         }
+        if let Ok(sysroot) = std::env::var("CARGO_NDK_SYSROOT_PATH") {
+            let mut sysroot = std::path::PathBuf::from(sysroot);
+
+            // -target armv7-none-linux-androideabi18 --sysroot -I{android}/Sdk/ndk/21.3.6528147/sources/android/cpufeatures -I{android}Sdk/ndk/21.3.6528147/sources/cxx-stl/llvm-libc++/include -I{android}/Sdk/ndk/21.3.6528147/sources/cxx-stl/llvm-libc++abi/include -nostdinc++ -DANDROID -D__ANDROID__ -DTRACY_ENABLE -std=c++11 -c TracyClient.cpp -o TracyClient.o
+
+            builder.flag("--sysroot");
+            builder.flag(&sysroot);
+
+            sysroot.push("usr");
+            sysroot.push("include");
+            // println!("Using sysroot: {sysroot:?}");
+
+            // builder.include(&sysroot);
+
+            // (${ANDROID_ABI} STREQUAL "arm64-v8a")
+            // include_directories(${ANDROID_SYSROOT}/usr/include/aarch64-linux-android)
+            sysroot.push("aarch64-linux-android");
+            builder.include(&sysroot);
+
+            sysroot.pop();
+            sysroot.push("linux");
+            builder.include(&sysroot);
+
+            // sysroot.pop();
+            // sysroot.push("c++");
+            // sysroot.push("v1");
+            // builder.include(&sysroot);
+        };
+
         let _ = builder.try_flags_from_environment("TRACY_CLIENT_SYS_CXXFLAGS");
         builder.compile("libtracy-client.a");
         link_dependencies();
